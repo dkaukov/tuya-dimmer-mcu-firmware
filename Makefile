@@ -23,6 +23,7 @@ SKIP_TRAPS = 0
 # set compiler path & parameters 
 CC_ROOT =
 CC      = sdcc
+OBJCOPY = sdobjcopy
 CFLAGS  = -mstm8 -lstm8 --opt-code-size 
 
 ## Extra optimization rules - use with care
@@ -97,3 +98,9 @@ flash: $(TARGET)
 clean: 
 	rm -fr $(OUTPUT_DIR)
 	$(MAKE) -C $(SPL_MAKE_DIR) clean DEVICE=$(DEVICE)
+
+size:
+	@$(OBJCOPY) -I ihex --output-target=binary $(TARGET) $(TARGET).bin
+	@echo "----------"
+	@echo "Image size:"
+	@stat -L -c %s $(TARGET).bin

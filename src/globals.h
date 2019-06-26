@@ -12,6 +12,7 @@ typedef struct {
 
 extern TYPE_BUFFER_S FlashBuffer;
 extern bool storeeprom;
+extern uint16_t dim_value;
 
 extern void uart_putchar (char c);
 

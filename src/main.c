@@ -14,6 +14,7 @@ uint32_t button_counter[MAX_BUTTONS] = {0};
 bool button_state[MAX_BUTTONS] = {0};
 bool last_button_state[MAX_BUTTONS] = {0};
 bool input = 0;
+uint16_t dim_value = 0;
 
 void uart_putchar (char c) {
   while (UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
@@ -105,7 +106,7 @@ void LedStatusService() {
 }
 
 void PersistentStateService() {
-  if(storeeprom) {
+  if(storeeprom && (dim_value <= (1 << FADE_SPEED))) {
     EEPROMSaveState();
     storeeprom = 0;
   }
@@ -134,7 +135,7 @@ void ButtonInputService(){
               enableInterrupts();
               brightness_update();
             }
-            else if((button[i][0] == BUTTON_3) && FlashBuffer.brightness > 25) {
+            else if((button[i][0] == BUTTON_3) && FlashBuffer.brightness > MIN_BRIGHNESS_VALUE) {
               FlashBuffer.brightness-=1;
               disableInterrupts();
               LED_PORT->ODR ^= button[i][1];

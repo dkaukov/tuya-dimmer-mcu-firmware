@@ -126,18 +126,17 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
     uint8_t tmph = TIM1->CNTRH;
     uint16_t tim1_temp_value = tmph << 8 | TIM1->CNTRL;
     uint16_t tmp_zero_x = tim1_temp_value - tim1_value;
-    uint8_t brightness = FlashBuffer.brightness;
     tim1_value = tim1_temp_value;
     TIM1->IER &= (uint8_t)(~(TIM1_IT_CC1 | TIM1_IT_CC2 | TIM1_IT_CC3 | TIM1_IT_CC4));
     zero_x -= (zero_x >> 2);
     zero_x += (tmp_zero_x >> 2);
-    if(FlashBuffer.power_switch && brightness > 0 && ((uint16_t)zero_x > 19000)) {
-      uint16_t duty_cycle = (zero_x  - (uint16_t)((zero_x * brightness) >> 8)) >> 1;
+    if(dim_value > (1 << FADE_SPEED) && ((uint16_t)zero_x > 19000)) {
+      uint16_t duty_cycle = (zero_x  - (uint16_t)((zero_x * dim_value) >> (8 + FADE_SPEED))) >> 1;
       uint16_t period = zero_x;
       uint16_t half_period = period >> 1;
-      if (duty_cycle >= (OFFSET + 600)) { 
-        //PWM_OFF;
-        tim1_temp_value -= (uint16_t)OFFSET;
+      if (duty_cycle >= (ZERO_CROSSING_DELAY_US + 600)) { 
+        PWM_OFF;
+        tim1_temp_value -= (uint16_t)ZERO_CROSSING_DELAY_US;
         TIM1_SetCompare1(tim1_temp_value + duty_cycle);
         TIM1_SetCompare2(tim1_temp_value + half_period);
         TIM1_SetCompare3(tim1_temp_value + half_period + duty_cycle);
@@ -149,6 +148,10 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
     } else {
       PWM_OFF;
     }
+  }
+  dim_value -= dim_value >> FADE_SPEED;
+  if (FlashBuffer.power_switch && FlashBuffer.brightness > 0) {
+    dim_value += (FlashBuffer.brightness);
   }
 }
 
@@ -226,6 +229,7 @@ INTERRUPT_HANDLER(TIM1_UPD_OVF_TRG_BRK_IRQHandler, 11)
   /* In order to detect unexpected events during development,
      it is recommended to set a breakpoint on the following instruction.
   */
+  TIM1_ClearITPendingBit(TIM1_IT_UPDATE);
  }
 
 /**

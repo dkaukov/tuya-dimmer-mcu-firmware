@@ -31,6 +31,8 @@
 #define ESP_GPIO0 GPIO_PIN_4
 #define ZERO_X GPIO_PIN_2
 
-#define OFFSET 150
+#define ZERO_CROSSING_DELAY_US 150
+#define FADE_SPEED 3
+#define MIN_BRIGHNESS_VALUE 25
 
 #endif /* __CONFIG_H */

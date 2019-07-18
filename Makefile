@@ -28,6 +28,7 @@ CFLAGS  = -mstm8 -lstm8 --opt-code-size
 
 ## Extra optimization rules - use with care
 CFLAGS  += --peep-file lib/extra.def
+CFLAGS  += --stack-auto --noinduction --use-non-free
 
 # set output folder and target name
 OUTPUT_DIR = ./target

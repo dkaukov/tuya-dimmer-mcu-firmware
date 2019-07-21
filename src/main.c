@@ -81,8 +81,10 @@ void EEPROM_read(uint16_t addr, uint8_t *buf, uint16_t len) {
 void EEPROM_write(uint16_t addr, uint8_t *buf, uint16_t len) {
   uint16_t i;
   for (i = 0; i < len; i++, addr++) {
-    (*(PointerAttr uint8_t *) (MemoryAddressCast)addr) = buf[i];
-    while (FLASH_GetFlagStatus(FLASH_IAPSR_EOP) == RESET);
+    if ((*(PointerAttr uint8_t *) (MemoryAddressCast)addr) != buf[i]) {
+      (*(PointerAttr uint8_t *) (MemoryAddressCast)addr) = buf[i];
+      while (FLASH_GetFlagStatus(FLASH_IAPSR_EOP) == RESET);
+    }
   }
 }
 

@@ -58,7 +58,7 @@
 #define ZERO_X GPIO_PIN_2
 
 #define ZERO_CROSSING_DELAY_US 150
-#define FADE_SPEED 3
-#define MIN_BRIGHNESS_VALUE 0
+#define FADE_SPEED 2
+#define MIN_BRIGHNESS_VALUE 1
 
 #endif /* __CONFIG_H */

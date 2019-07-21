@@ -59,6 +59,6 @@
 
 #define ZERO_CROSSING_DELAY_US 150
 #define FADE_SPEED 3
-#define MIN_BRIGHNESS_VALUE 30
+#define MIN_BRIGHNESS_VALUE 0
 
 #endif /* __CONFIG_H */

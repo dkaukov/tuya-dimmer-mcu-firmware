@@ -151,7 +151,7 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
   }
   dim_value -= dim_value >> FADE_SPEED;
   if (FlashBuffer.power_switch && FlashBuffer.brightness > 0) {
-    dim_value += (FlashBuffer.brightness);
+    dim_value += (log_dim_curve[FlashBuffer.brightness]);
   }
 }
 

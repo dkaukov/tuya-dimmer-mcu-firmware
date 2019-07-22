@@ -27,7 +27,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define DEBOUNCE 2
+#define DEBOUNCE 10
 #define MAX_BUTTONS 3
 
 #define LED_PORT GPIOC
@@ -40,12 +40,21 @@
 #define PWM_ON  __asm__("bset 0x500a, #7")
 #define PWM_OFF __asm__("bres 0x500a, #7")
 
-#define LED_1_ON  __asm__("bset 0x500a, #4") 
-#define LED_1_OFF __asm__("bres 0x500a, #4") 
-#define LED_2_ON  __asm__("bset 0x500a, #5")
-#define LED_2_OFF __asm__("bres 0x500a, #5")
-#define LED_3_ON  __asm__("bset 0x500a, #3")
-#define LED_3_OFF __asm__("bres 0x500a, #3")
+// 0x500A
+#define MCLED_1_OFF    __asm__("bset 0x500a, #4\nbres 0x500d, #4") 
+#define MCLED_1_BLUE   __asm__("bres 0x500a, #4\nbset 0x500d, #4") 
+#define MCLED_1_RED    __asm__("bset 0x500a, #4\nbset 0x500d, #4") 
+#define MCLED_1_TOGGLE __asm__("bcpl 0x500a, #4") 
+
+#define MCLED_2_OFF    __asm__("bset 0x500a, #5\nbres 0x500d, #5") 
+#define MCLED_2_BLUE   __asm__("bres 0x500a, #5\nbset 0x500d, #5") 
+#define MCLED_2_RED    __asm__("bset 0x500a, #5\nbset 0x500d, #5") 
+#define MCLED_2_TOGGLE __asm__("bcpl 0x500a, #5") 
+
+#define MCLED_3_OFF    __asm__("bset 0x500a, #3\nbres 0x500d, #3") 
+#define MCLED_3_BLUE   __asm__("bres 0x500a, #3\nbset 0x500d, #3") 
+#define MCLED_3_RED    __asm__("bset 0x500a, #3\nbset 0x500d, #3") 
+#define MCLED_3_TOGGLE __asm__("bcpl 0x500a, #3") 
 
 #define BUTTON_PORT GPIOA
 #define BUTTON_1 GPIO_PIN_2
@@ -59,6 +68,6 @@
 
 #define ZERO_CROSSING_DELAY_US 150
 #define FADE_SPEED 2
-#define MIN_BRIGHNESS_VALUE 1
+#define MIN_BRIGHNESS_VALUE 36
 
 #endif /* __CONFIG_H */

@@ -34,7 +34,7 @@
 TYPE_BUFFER_S FlashBuffer;
 bool storeeprom;
 
-uint16_t button[MAX_BUTTONS][2] = { {BUTTON_1, LED_1}, {BUTTON_2, LED_2}, {BUTTON_3, LED_3} };
+const uint16_t button[MAX_BUTTONS][2] = { {BUTTON_1, LED_1}, {BUTTON_2, LED_2}, {BUTTON_3, LED_3} };
 uint8_t button_debounce[MAX_BUTTONS] = {0};
 uint32_t button_counter[MAX_BUTTONS] = {0};
 bool button_state[MAX_BUTTONS] = {0};
@@ -56,7 +56,7 @@ void uart_putchar (char c) {
 
 void GPIO_Config(){
   GPIO_Init(PWM_PORT, PWM, GPIO_MODE_OUT_PP_LOW_FAST);
-  GPIO_Init(LED_PORT, LED_1 | LED_2 | LED_3, GPIO_MODE_OUT_PP_LOW_SLOW);
+  GPIO_Init(LED_PORT, LED_1 | LED_2 | LED_3, GPIO_MODE_OUT_OD_LOW_SLOW);
   GPIO_Init(BUTTON_PORT, BUTTON_1 | BUTTON_2 | BUTTON_3, GPIO_MODE_IN_PU_NO_IT);
   GPIO_Init(MISC_PORT, ESP_GPIO0, GPIO_MODE_OUT_PP_HIGH_FAST);
   GPIO_Init(MISC_PORT, ZERO_X, GPIO_MODE_IN_FL_IT);
@@ -133,10 +133,22 @@ void delayUs(uint16_t ms){
 
 void LedStatusService() {
   if (FlashBuffer.power_switch){
-    LED_2_ON;
+    MCLED_2_OFF;
+    if (FlashBuffer.brightness > MIN_BRIGHNESS_VALUE + 1) {
+      MCLED_3_BLUE;
+    } else {
+      MCLED_3_RED;
+    }
+    if (FlashBuffer.brightness < 254 - 1) {
+      MCLED_1_BLUE;
+    } else {
+      MCLED_1_RED;
+    }
   }
   else {
-    LED_2_OFF;
+    MCLED_1_OFF;
+    MCLED_2_BLUE;
+    MCLED_3_OFF;
   }
 }
 
@@ -165,16 +177,12 @@ void ButtonInputService(){
           if(button_counter[i] >= (10000)){ // 100 ms
             if((button[i][0] == BUTTON_1) && FlashBuffer.brightness <= 254) {
               FlashBuffer.brightness+=1;
-              disableInterrupts();
-              LED_PORT->ODR ^= button[i][1];
-              enableInterrupts();
+              MCLED_2_RED;
               brightness_update();
             }
             else if((button[i][0] == BUTTON_3) && FlashBuffer.brightness > MIN_BRIGHNESS_VALUE) {
               FlashBuffer.brightness-=1;
-              disableInterrupts();
-              LED_PORT->ODR ^= button[i][1];
-              enableInterrupts();
+              MCLED_2_BLUE;
               brightness_update();
             }
             button_counter[i] = 0;
@@ -204,8 +212,8 @@ void ButtonInputService(){
             }
             switch_update();
           }
-          LED_1_OFF;
-          LED_3_OFF;
+          MCLED_1_OFF;
+          MCLED_3_OFF;
           GPIO_WriteHigh(MISC_PORT, ESP_GPIO0);
         }
       }
@@ -235,9 +243,10 @@ void setup() {
 void loop() {
   wifi_uart_service();
   ButtonInputService();
+  delayUs(5000);
   LedStatusService();
   PersistentStateService();
-  delayUs(10000);
+  delayUs(30000);
 }
 
 void main() {

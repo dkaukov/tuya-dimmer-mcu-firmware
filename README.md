@@ -2,7 +2,7 @@
 
 OSS implementation of the TRIAC and faceplate controller for the Tuya Wi-Fi dimmers
 
-inspired by https://github.com/chaosmaster/tuya_mcu
+inspired by: [Replacement firmware for tuya dimmer MCU - GitHub](https://github.com/chaosmaster/tuya_mcu)
 
 Features:
 * fixed issues with random flickering of the `tuya_mcu`

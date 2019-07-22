@@ -41,6 +41,6 @@ extern bool storeeprom;
 extern uint16_t dim_value;
 
 extern void uart_putchar (char c);
-extern const uint16_t log_dim_curve[];
+extern const uint16_t dim_curve[];
 
 #endif /* __GLOBALS_H */

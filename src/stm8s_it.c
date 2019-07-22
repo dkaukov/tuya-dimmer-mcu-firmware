@@ -131,7 +131,7 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
     zero_x -= (zero_x >> 2);
     zero_x += (tmp_zero_x >> 2);
     if(dim_value > (1 << FADE_SPEED) && ((uint16_t)zero_x > 19000)) {
-      uint16_t duty_cycle = (zero_x  - (uint16_t)((zero_x * dim_value) >> (8 + FADE_SPEED + 3))) >> 1;
+      uint16_t duty_cycle = (zero_x  - (uint16_t)((zero_x * dim_value) >> (8 + FADE_SPEED + DIM_CURVE_FP_BITS))) >> 1;
       uint16_t period = zero_x;
       uint16_t half_period = period >> 1;
       if (duty_cycle >= (ZERO_CROSSING_DELAY_US + 600)) { 
@@ -151,7 +151,11 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
   }
   dim_value -= dim_value >> FADE_SPEED;
   if (FlashBuffer.power_switch && FlashBuffer.brightness > 0) {
-    dim_value += (log_dim_curve[FlashBuffer.brightness]);
+    #if defined(DIM_CURVE_TYPE_LOG) || defined(DIM_CURVE_TYPE_BICUBIC) 
+      dim_value += (dim_curve[FlashBuffer.brightness]);
+    #else
+      dim_value += (FlashBuffer.brightness);
+    #endif
   }
 }
 

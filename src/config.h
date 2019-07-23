@@ -27,7 +27,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define DEBOUNCE 10
+#define DEBOUNCE 2
 #define MAX_BUTTONS 3
 
 #define LED_PORT GPIOC

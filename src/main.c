@@ -43,6 +43,7 @@ bool button_state[MAX_BUTTONS] = {0};
 bool last_button_state[MAX_BUTTONS] = {0};
 bool input = 0;
 uint16_t dim_value = 0;
+uint8_t brightness_update_counter = 0;
 
 void uart_putchar (char c) {
   while (UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
@@ -121,14 +122,18 @@ uint16_t micros(){
   return tmp;
 }
 
-void delayUs(uint16_t ms){
-  uint16_t deadline = micros() + ms;
-  while(micros() < deadline);
+void delayUs(uint16_t us){
+  int16_t start = micros();
+  while ((micros() - start) < us) {
+    wifi_uart_service();
+  }
 }
 
 void LedStatusService() {
   if (FlashBuffer.power_switch){
-    MCLED_2_OFF;
+    if (brightness_update_counter == 0) {
+      MCLED_2_OFF;
+    }
     if (FlashBuffer.brightness > MIN_BRIGHNESS_VALUE + 1) {
       MCLED_3_BLUE;
     } else {
@@ -154,6 +159,15 @@ void PersistentStateService() {
   }
 }
 
+void BrighnessUpdateService() {
+  if (brightness_update_counter > 0) {
+    brightness_update_counter--;
+    if (brightness_update_counter == 0) {
+      brightness_update();
+    }
+  }
+}
+
 void ButtonInputService(){
   static uint16_t last_micros = 0;
   uint8_t i;
@@ -173,12 +187,14 @@ void ButtonInputService(){
             if((button[i][0] == BUTTON_1) && FlashBuffer.brightness <= 254) {
               FlashBuffer.brightness+=1;
               MCLED_2_RED;
-              brightness_update();
+              MCLED_1_OFF;
+              brightness_update_counter = 4;
             }
             else if((button[i][0] == BUTTON_3) && FlashBuffer.brightness > MIN_BRIGHNESS_VALUE) {
               FlashBuffer.brightness-=1;
               MCLED_2_BLUE;
-              brightness_update();
+              MCLED_3_OFF;
+              brightness_update_counter = 4;
             }
             button_counter[i] = 0;
           }
@@ -238,9 +254,9 @@ void setup() {
 void loop() {
   wifi_uart_service();
   ButtonInputService();
-  delayUs(5000);
   LedStatusService();
   PersistentStateService();
+  BrighnessUpdateService();
   delayUs(30000);
 }
 

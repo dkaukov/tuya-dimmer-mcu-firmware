@@ -30,6 +30,11 @@
 #include  <stdlib.h>
 #include "stm8s_conf.h"
 
+typedef struct timer_small timer_small_t;
+struct timer_small { uint16_t elapsed, interval; uint16_t last_systick;};
+typedef struct timer_big timer_big_t;
+struct timer_big   { uint32_t elapsed, interval; uint16_t last_systick;};
+
 typedef struct {
   uint32_t magic_code;
   uint8_t power_switch;

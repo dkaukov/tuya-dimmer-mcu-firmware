@@ -32,22 +32,61 @@
 #include "wifi.h"
 #include "bicubic_curve.h"
 #include "log_curve.h"
+#include <pt.h>
+#include <pt-sem.h>
 
 TYPE_BUFFER_S FlashBuffer;
 bool storeeprom;
 
-const uint16_t button[MAX_BUTTONS][2] = { {BUTTON_1, LED_1}, {BUTTON_2, LED_2}, {BUTTON_3, LED_3} };
-uint8_t button_debounce[MAX_BUTTONS] = {0};
-uint32_t button_counter[MAX_BUTTONS] = {0};
-bool button_state[MAX_BUTTONS] = {0};
-bool last_button_state[MAX_BUTTONS] = {0};
-bool input = 0;
 uint16_t dim_value = 0;
-uint8_t brightness_update_counter = 0;
+
+static timer_small_t tmBrightnessUpdate;
+
+static struct pt ptPowerButtonController;
+static struct pt ptIncButtonController;
+static struct pt ptDecButtonController;
+static struct pt ptWifiButtonController;
+static struct pt ptBrighnessUpdateService;
 
 void uart_putchar (char c) {
   while (UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
   UART1_SendData8(c);
+}
+
+inline uint16_t __interval(uint16_t i_start, uint16_t i_end) {
+  return (i_end - i_start);
+}
+
+uint8_t timer_expired(struct timer_small *t, uint16_t systick) {
+  uint16_t dt = __interval(t->last_systick, systick);
+  t->last_systick = systick;
+  if (t->elapsed <= dt) {
+    t->elapsed = t->interval;
+    return 1;
+  } ;
+  t->elapsed -= dt;
+  return 0;
+}
+
+uint8_t timer_expired_big(timer_big_t *t, uint16_t systick) {
+  uint16_t dt = __interval(t->last_systick, systick);
+  t->last_systick = systick;
+  if (t->elapsed < dt) {
+    t->elapsed = t->interval;
+    return 1;
+  } ;
+  t->elapsed -= dt;
+  return 0;
+}
+
+void timer_reset(timer_small_t *t, uint16_t elapsed, uint16_t systick) {
+  t->elapsed = elapsed;
+  t->last_systick = systick;
+}
+
+void timer_reset_big(timer_big_t *t, uint32_t elapsed, uint16_t systick) {
+  t->elapsed = elapsed;
+  t->last_systick = systick;
 }
 
 void GPIO_Config(){
@@ -122,16 +161,9 @@ uint16_t micros(){
   return tmp;
 }
 
-void delayUs(uint16_t us){
-  int16_t start = micros();
-  while ((micros() - start) < us) {
-    wifi_uart_service();
-  }
-}
-
 void LedStatusService() {
   if (FlashBuffer.power_switch){
-    if (brightness_update_counter == 0) {
+    if (tmBrightnessUpdate.elapsed == 0) {
       MCLED_2_OFF;
     }
     if (FlashBuffer.brightness > MIN_BRIGHNESS_VALUE + 1) {
@@ -159,78 +191,76 @@ void PersistentStateService() {
   }
 }
 
-void BrighnessUpdateService() {
-  if (brightness_update_counter > 0) {
-    brightness_update_counter--;
-    if (brightness_update_counter == 0) {
-      brightness_update();
-    }
+static PT_THREAD(brighnessUpdateService(struct pt *pt, uint16_t dt)) {
+  PT_BEGIN(pt);
+  PT_WAIT_UNTIL(pt, !timer_expired(&tmBrightnessUpdate, dt));
+  PT_WAIT_UNTIL(pt, timer_expired(&tmBrightnessUpdate, dt));
+  brightness_update();
+  PT_END(pt);
+ }
+
+static PT_THREAD(powerButtonController(struct pt *pt, uint16_t dt)) {
+  static timer_small_t tm;
+  uint8_t expired = 0;
+  PT_BEGIN(pt);
+  PT_WAIT_UNTIL(pt, !(GPIO_ReadInputData(BUTTON_PORT) & BUTTON_2));
+  timer_reset(&tm, 5000, dt);
+  PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_2) || (expired = timer_expired(&tm, dt)));
+  if (!expired) {
+    PT_EXIT(pt);
   }
+  FlashBuffer.power_switch = !FlashBuffer.power_switch;
+  storeeprom = 1;
+  if (FlashBuffer.power_switch) {
+    PersistentStateService();
+  }
+  switch_update();
+  PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_2));
+  timer_reset(&tm, 50000, dt);
+  PT_WAIT_UNTIL(pt, timer_expired(&tm, dt));
+  PT_END(pt);
 }
 
-void ButtonInputService(){
-  static uint16_t last_micros = 0;
-  uint8_t i;
-  uint16_t this_micros = micros();
-  uint16_t diff = this_micros - last_micros;
-  last_micros = this_micros;
-  for (i = 0; i < MAX_BUTTONS; ++i){
-    input = GPIO_ReadInputData(BUTTON_PORT) & button[i][0];
-    if(input != last_button_state[i]){
-      button_debounce[i] = 0;
-    }
-    if(++button_debounce[i] >= DEBOUNCE) {
-      if(!input){
-        button_counter[i] += diff;
-        if(FlashBuffer.power_switch){
-          if(button_counter[i] >= (10000)){ // 100 ms
-            if((button[i][0] == BUTTON_1) && FlashBuffer.brightness <= 254) {
-              FlashBuffer.brightness+=1;
-              MCLED_2_RED;
-              MCLED_1_OFF;
-              brightness_update_counter = 4;
-            }
-            else if((button[i][0] == BUTTON_3) && FlashBuffer.brightness > MIN_BRIGHNESS_VALUE) {
-              FlashBuffer.brightness-=1;
-              MCLED_2_BLUE;
-              MCLED_3_OFF;
-              brightness_update_counter = 4;
-            }
-            button_counter[i] = 0;
-          }
-        }
-        else{
-          if(button_counter[i] >= (7500000)){ // 15 s
-            if((button[i][0] == BUTTON_3)) {
-              GPIO_WriteLow(MISC_PORT, ESP_GPIO0);
-            }
-            button_counter[i] = 0;
-          }
-        }
-      }
-      else{
-        button_counter[i] = 0;
-      }
-      
-      if(input != button_state[i]){
-        button_state[i] = input;
-        if(button_state[i]){
-          if((button[i][0] == BUTTON_2)){
-            FlashBuffer.power_switch = !FlashBuffer.power_switch;
-            storeeprom = 1;
-            if (FlashBuffer.power_switch) {
-              PersistentStateService();
-            }
-            switch_update();
-          }
-          MCLED_1_OFF;
-          MCLED_3_OFF;
-          GPIO_WriteHigh(MISC_PORT, ESP_GPIO0);
-        }
-      }
-    }
-    last_button_state[i] = input;
+static PT_THREAD(incButtonController(struct pt *pt, uint16_t dt)) {
+  static timer_small_t tm;
+  PT_BEGIN(pt);
+  PT_WAIT_UNTIL(pt, !(GPIO_ReadInputData(BUTTON_PORT) & BUTTON_1) && FlashBuffer.power_switch && (FlashBuffer.brightness <= 254));
+  FlashBuffer.brightness+=1;
+  MCLED_2_RED;
+  MCLED_1_OFF;
+  timer_reset(&tmBrightnessUpdate, 20000, dt);
+  timer_reset(&tm, 10000, dt);
+  PT_WAIT_UNTIL(pt, timer_expired(&tm, dt));
+  PT_END(pt);
+}
+
+static PT_THREAD(decButtonController(struct pt *pt, uint16_t dt)) {
+  static timer_small_t tm;
+  PT_BEGIN(pt);
+  PT_WAIT_UNTIL(pt, !(GPIO_ReadInputData(BUTTON_PORT) & BUTTON_3) && FlashBuffer.power_switch && (FlashBuffer.brightness > MIN_BRIGHNESS_VALUE));
+  FlashBuffer.brightness-=1;
+  MCLED_2_BLUE;
+  MCLED_3_OFF;
+  timer_reset(&tmBrightnessUpdate, 20000, dt);
+  timer_reset(&tm, 10000, dt);
+  PT_WAIT_UNTIL(pt, timer_expired(&tm, dt));
+  PT_END(pt);
+}
+
+static PT_THREAD(wifiButtonController(struct pt *pt, uint16_t dt)) {
+  static timer_big_t tm;
+  uint8_t expired = 0;
+  PT_BEGIN(pt);
+  PT_WAIT_UNTIL(pt, !(GPIO_ReadInputData(BUTTON_PORT) & BUTTON_3) && !FlashBuffer.power_switch);
+  timer_reset_big(&tm, 15000000, dt);
+  PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_3) || (expired = timer_expired_big(&tm, dt)));
+  if (!expired) {
+    PT_EXIT(pt);
   }
+  GPIO_WriteLow(MISC_PORT, ESP_GPIO0);
+  PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_3));
+  GPIO_WriteHigh(MISC_PORT, ESP_GPIO0);
+  PT_END(pt);
 }
 
 void setup() {
@@ -244,20 +274,25 @@ void setup() {
   ITC_Config();
   wifi_protocol_init();
   EEPROMLoadState();
-  for (i = 0; i < MAX_BUTTONS; ++i){
-    last_button_state[i] = button_state[i] = GPIO_ReadInputData(BUTTON_PORT) & button[i][0];
-  }  
   LedStatusService();
   enableInterrupts();
+  PT_INIT(&ptPowerButtonController);
+  PT_INIT(&ptIncButtonController);
+  PT_INIT(&ptDecButtonController);
+  PT_INIT(&ptWifiButtonController);
+  PT_INIT(&ptBrighnessUpdateService);
 }
 
 void loop() {
+  uint16_t current_tick = micros();
   wifi_uart_service();
-  ButtonInputService();
   LedStatusService();
   PersistentStateService();
-  BrighnessUpdateService();
-  delayUs(30000);
+  PT_SCHEDULE(powerButtonController(&ptPowerButtonController, current_tick));
+  PT_SCHEDULE(incButtonController(&ptIncButtonController, current_tick));
+  PT_SCHEDULE(decButtonController(&ptDecButtonController, current_tick));
+  PT_SCHEDULE(wifiButtonController(&ptWifiButtonController, current_tick));
+  PT_SCHEDULE(brighnessUpdateService(&ptBrighnessUpdateService, current_tick));
 }
 
 void main() {

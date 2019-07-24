@@ -48,6 +48,10 @@ SPL_INC_DIR = $(SPL_ROOT)/Libraries/STM8S_StdPeriph_Driver/inc
 SPL_LIB_DIR = $(SPL_ROOT)/Libraries/STM8S_StdPeriph_Driver/$(DEVICE)
 SPL_LIB = spl.lib
 
+# set PT paths
+PT_ROOT = lib/pt
+PT_INC_DIR = $(PT_ROOT)
+
 # set path to STM8S_EVAL board routines
 EVAL_DIR     = $(SPL_ROOT)/Utilities/STM8S_EVAL
 EVAL_SOURCE  = 
@@ -69,7 +73,7 @@ MCU_SOURCE  = mcu_api.c protocol.c system.c
 MCU_OBJECTS := $(addprefix $(OUTPUT_DIR)/, $(MCU_SOURCE:.c=.rel))
 
 # collect all include folders
-INCLUDE = -I$(PRJ_SRC_DIR) -I$(SPL_INC_DIR) -I$(EVAL_DIR) -I$(EVAL_COMM_DIR) -I$(EVAL_STM8S_128K_DIR) -I$(MCU_SDK_DIR)
+INCLUDE = -I$(PRJ_SRC_DIR) -I$(SPL_INC_DIR) -I$(EVAL_DIR) -I$(EVAL_COMM_DIR) -I$(EVAL_STM8S_128K_DIR) -I$(MCU_SDK_DIR) -I$(PT_INC_DIR)
 
 # collect all source directories
 VPATH=$(PRJ_SRC_DIR):$(SPL_SRC_DIR):$(EVAL_DIR):$(EVAL_COMM_DIR):$(EVAL_STM8S_128K_DIR):$(MCU_SDK_DIR)

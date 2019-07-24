@@ -47,6 +47,8 @@ static struct pt ptIncButtonController;
 static struct pt ptDecButtonController;
 static struct pt ptWifiButtonController;
 static struct pt ptBrighnessUpdateService;
+static struct pt ptMaxBrigtnessButtonController;
+static struct pt ptMinBrigtnessButtonController;
 
 void uart_putchar (char c) {
   while (UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
@@ -263,6 +265,48 @@ static PT_THREAD(wifiButtonController(struct pt *pt, uint16_t dt)) {
   PT_END(pt);
 }
 
+static PT_THREAD(maxBrigtnessButtonController(struct pt *pt, uint16_t dt)) {
+  static timer_big_t tm;
+  uint8_t expired = 0;
+  PT_BEGIN(pt);
+  PT_WAIT_UNTIL(pt, !(GPIO_ReadInputData(BUTTON_PORT) & BUTTON_1) && !FlashBuffer.power_switch);
+  timer_reset_big(&tm, 1000000, dt);
+  PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_1) || (expired = timer_expired_big(&tm, dt)));
+  if (!expired) {
+    PT_EXIT(pt);
+  }
+  FlashBuffer.power_switch = 1;
+  EEPROMSaveState();
+  switch_update();
+  timer_reset_big(&tm, 100000, dt);
+  PT_WAIT_UNTIL(pt, timer_expired_big(&tm, dt));
+  FlashBuffer.brightness = 255;
+  //brightness_update();
+  //PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_1));
+  PT_END(pt);
+}
+
+static PT_THREAD(minBrigtnessButtonController(struct pt *pt, uint16_t dt)) {
+  static timer_big_t tm;
+  uint8_t expired = 0;
+  PT_BEGIN(pt);
+  PT_WAIT_UNTIL(pt, !(GPIO_ReadInputData(BUTTON_PORT) & BUTTON_3) && !FlashBuffer.power_switch);
+  timer_reset_big(&tm, 1000000, dt);
+  PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_3) || (expired = timer_expired_big(&tm, dt)));
+  if (!expired) {
+    PT_EXIT(pt);
+  }
+  FlashBuffer.power_switch = 1;
+  EEPROMSaveState();
+  switch_update();
+  timer_reset_big(&tm, 100000, dt);
+  PT_WAIT_UNTIL(pt, timer_expired_big(&tm, dt));
+  FlashBuffer.brightness = MIN_BRIGHNESS_VALUE;
+  //brightness_update();
+  //PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_3));
+  PT_END(pt);
+}
+
 void setup() {
   uint8_t i;
   CLK_Config(); 
@@ -281,6 +325,8 @@ void setup() {
   PT_INIT(&ptDecButtonController);
   PT_INIT(&ptWifiButtonController);
   PT_INIT(&ptBrighnessUpdateService);
+  PT_INIT(&ptMaxBrigtnessButtonController);
+  PT_INIT(&ptMinBrigtnessButtonController);
 }
 
 void loop() {
@@ -293,6 +339,8 @@ void loop() {
   PT_SCHEDULE(decButtonController(&ptDecButtonController, current_tick));
   PT_SCHEDULE(wifiButtonController(&ptWifiButtonController, current_tick));
   PT_SCHEDULE(brighnessUpdateService(&ptBrighnessUpdateService, current_tick));
+  PT_SCHEDULE(maxBrigtnessButtonController(&ptMaxBrigtnessButtonController, current_tick));
+  PT_SCHEDULE(minBrigtnessButtonController(&ptMinBrigtnessButtonController, current_tick));
 }
 
 void main() {

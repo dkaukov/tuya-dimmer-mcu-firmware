@@ -92,4 +92,6 @@
     #define DIM_CURVE_FP_BITS           0
 #endif
 
+#define BRIGTNESS_LOOP_TIME 250
+
 #endif /* __CONFIG_H */

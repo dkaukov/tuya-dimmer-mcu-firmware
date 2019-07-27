@@ -35,12 +35,16 @@
 #include <pt.h>
 #include <pt-sem.h>
 
+#define TICKS_PER_MS (long)1000
+#define TICKS_PER_US 1
+
 TYPE_BUFFER_S FlashBuffer;
 bool storeeprom;
 
 uint16_t dim_value = 0;
 
 static timer_small_t tmBrightnessUpdate;
+static timer_big_t   tmBrightnessUpdateLoop  = {0, BRIGTNESS_LOOP_TIME  * TICKS_PER_MS};
 
 static struct pt ptPowerButtonController;
 static struct pt ptIncButtonController;
@@ -49,6 +53,7 @@ static struct pt ptWifiButtonController;
 static struct pt ptBrighnessUpdateService;
 static struct pt ptMaxBrigtnessButtonController;
 static struct pt ptMinBrigtnessButtonController;
+static struct pt ptBrigtnessControlLoop;
 
 void uart_putchar (char c) {
   while (UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
@@ -281,8 +286,6 @@ static PT_THREAD(maxBrigtnessButtonController(struct pt *pt, uint16_t dt)) {
   timer_reset_big(&tm, 100000, dt);
   PT_WAIT_UNTIL(pt, timer_expired_big(&tm, dt));
   FlashBuffer.brightness = 255;
-  //brightness_update();
-  //PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_1));
   PT_END(pt);
 }
 
@@ -302,10 +305,23 @@ static PT_THREAD(minBrigtnessButtonController(struct pt *pt, uint16_t dt)) {
   timer_reset_big(&tm, 100000, dt);
   PT_WAIT_UNTIL(pt, timer_expired_big(&tm, dt));
   FlashBuffer.brightness = MIN_BRIGHNESS_VALUE;
-  //brightness_update();
-  //PT_WAIT_UNTIL(pt, (GPIO_ReadInputData(BUTTON_PORT) & BUTTON_3));
   PT_END(pt);
 }
+
+static PT_THREAD(brigtnessControlLoop(struct pt *pt, uint16_t dt)) {
+  PT_BEGIN(pt);
+  PT_WAIT_UNTIL(pt, timer_expired_big(&tmBrightnessUpdateLoop, dt));
+  dim_value -= dim_value >> FADE_SPEED;
+  if (FlashBuffer.power_switch && FlashBuffer.brightness > 0) {
+    #if defined(DIM_CURVE_TYPE_LOG) || defined(DIM_CURVE_TYPE_BICUBIC) 
+      dim_value += (dim_curve[FlashBuffer.brightness]);
+    #else
+      dim_value += (FlashBuffer.brightness);
+    #endif
+  }
+  PT_END(pt);
+}
+
 
 void setup() {
   uint8_t i;
@@ -327,6 +343,7 @@ void setup() {
   PT_INIT(&ptBrighnessUpdateService);
   PT_INIT(&ptMaxBrigtnessButtonController);
   PT_INIT(&ptMinBrigtnessButtonController);
+  PT_INIT(&ptBrigtnessControlLoop);
 }
 
 void loop() {
@@ -341,6 +358,7 @@ void loop() {
   PT_SCHEDULE(brighnessUpdateService(&ptBrighnessUpdateService, current_tick));
   PT_SCHEDULE(maxBrigtnessButtonController(&ptMaxBrigtnessButtonController, current_tick));
   PT_SCHEDULE(minBrigtnessButtonController(&ptMinBrigtnessButtonController, current_tick));
+  PT_SCHEDULE(brigtnessControlLoop(&ptBrigtnessControlLoop, current_tick));
 }
 
 void main() {

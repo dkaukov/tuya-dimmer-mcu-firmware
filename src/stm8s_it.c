@@ -149,6 +149,14 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
       PWM_OFF;
     }
   }
+  dim_value -= dim_value >> FADE_SPEED;
+  if (FlashBuffer.power_switch && FlashBuffer.brightness > 0) {
+    #if defined(DIM_CURVE_TYPE_LOG) || defined(DIM_CURVE_TYPE_BICUBIC) 
+      dim_value += (dim_curve[FlashBuffer.brightness]);
+    #else
+      dim_value += (FlashBuffer.brightness);
+    #endif
+  }
 }
 
 /**

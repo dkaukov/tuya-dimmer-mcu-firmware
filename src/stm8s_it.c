@@ -134,13 +134,17 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
       uint16_t duty_cycle = (zero_x  - (uint16_t)((zero_x * dim_value) >> (8 + FADE_SPEED + DIM_CURVE_FP_BITS))) >> 1;
       uint16_t period = zero_x;
       uint16_t half_period = period >> 1;
-      if (duty_cycle >= (ZERO_CROSSING_DELAY_US + 600)) { 
+      uint16_t triac_safeguard = half_period - duty_cycle;
+      if (triac_safeguard > TRIAC_SAFEGUARD_US) {
+        triac_safeguard = TRIAC_SAFEGUARD_US;
+      }
+      if (duty_cycle >= (ZERO_CROSSING_DELAY_US + TRIAC_SAFEGUARD_US)) { 
         PWM_OFF;
         tim1_temp_value -= (uint16_t)ZERO_CROSSING_DELAY_US;
         TIM1_SetCompare1(tim1_temp_value + duty_cycle);
-        TIM1_SetCompare2(tim1_temp_value + half_period);
+        TIM1_SetCompare2(tim1_temp_value + half_period - triac_safeguard);
         TIM1_SetCompare3(tim1_temp_value + half_period + duty_cycle);
-        TIM1_SetCompare4(tim1_temp_value + period);
+        TIM1_SetCompare4(tim1_temp_value + period - triac_safeguard);
         TIM1->IER |= (uint8_t)(TIM1_IT_CC1 | TIM1_IT_CC2 | TIM1_IT_CC3 | TIM1_IT_CC4);
       } else {
         PWM_ON;

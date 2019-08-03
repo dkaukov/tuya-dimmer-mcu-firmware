@@ -67,7 +67,7 @@
 #define ZERO_X GPIO_PIN_2
 
 #define ZERO_CROSSING_DELAY_US 150
-#define FADE_SPEED 2
+#define FADE_SPEED 3
 #define MIN_BRIGHNESS_VALUE 25
 
 #define DIM_CURVE_TYPE_BICUBIC
@@ -77,7 +77,7 @@
     // minimum pwm value (0-255)
     #define DIM_CURVE_MIN_VAL            32
     // Fixed poin bits, to increase precision
-    #define DIM_CURVE_FP_BITS            4
+    #define DIM_CURVE_FP_BITS            (8 - FADE_SPEED)
 #endif
 
 //#define DIM_CURVE_TYPE_LOG

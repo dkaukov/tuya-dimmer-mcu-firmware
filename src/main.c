@@ -168,15 +168,15 @@ void LedStatusService() {
     if (tmBrightnessUpdate.elapsed == 0) {
       MCLED_2_OFF;
     }
-    if (FlashBuffer.brightness > MIN_BRIGHNESS_VALUE + 1) {
-      MCLED_3_BLUE;
-    } else {
+    if (FlashBuffer.brightness <= MIN_BRIGHNESS_VALUE) {
       MCLED_3_RED;
-    }
-    if (FlashBuffer.brightness < 254 - 1) {
-      MCLED_1_BLUE;
     } else {
+      MCLED_3_BLUE;
+    }
+    if (FlashBuffer.brightness >= 254) {
       MCLED_1_RED;
+    } else {
+      MCLED_1_BLUE;
     }
   }
   else {

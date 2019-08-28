@@ -73,7 +73,7 @@
 
 
 #define FADE_SPEED 4
-#define MIN_BRIGHNESS_VALUE 2  // 1%
+#define MIN_BRIGHNESS_VALUE 3  // 1%
 
 #define DIM_CURVE_TYPE_BICUBIC
 #ifdef DIM_CURVE_TYPE_BICUBIC

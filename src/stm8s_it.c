@@ -135,10 +135,10 @@ INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
       uint16_t period = zero_x;
       uint16_t half_period = period >> 1;
       uint16_t triac_safeguard = half_period - duty_cycle;
-      if (triac_safeguard > TRIAC_SAFEGUARD_US) {
-        triac_safeguard = TRIAC_SAFEGUARD_US;
+      if (triac_safeguard > TRIAC_MIN_TURN_OFF_TIME_US) {
+        triac_safeguard = TRIAC_MIN_TURN_OFF_TIME_US;
       }
-      if (duty_cycle >= (ZERO_CROSSING_DELAY_US + TRIAC_SAFEGUARD_US)) { 
+      if (duty_cycle >= (ZERO_CROSSING_DELAY_US + TRIAC_MIN_TURN_ON_TIME_US)) { 
         PWM_OFF;
         tim1_temp_value -= (uint16_t)ZERO_CROSSING_DELAY_US;
         TIM1_SetCompare1(tim1_temp_value + duty_cycle);

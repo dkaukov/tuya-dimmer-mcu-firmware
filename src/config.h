@@ -66,17 +66,21 @@
 #define ESP_GPIO0 GPIO_PIN_4
 #define ZERO_X GPIO_PIN_2
 
-#define ZERO_CROSSING_DELAY_US 410
-#define TRIAC_SAFEGUARD_US 50
+// Triac and opto-coupler timings
+#define ZERO_CROSSING_DELAY_US     300
+#define TRIAC_MIN_TURN_OFF_TIME_US 230
+#define TRIAC_MIN_TURN_ON_TIME_US  600
+
+
 #define FADE_SPEED 2
-#define MIN_BRIGHNESS_VALUE 25
+#define MIN_BRIGHNESS_VALUE 2  // 1%
 
 #define DIM_CURVE_TYPE_BICUBIC
 #ifdef DIM_CURVE_TYPE_BICUBIC
     // 1 - linear
-    #define DIM_CURVE_BICUBIC_EXP_FACTOR 0.025
+    #define DIM_CURVE_BICUBIC_EXP_FACTOR 0.25
     // minimum pwm value (0-255)
-    #define DIM_CURVE_MIN_VAL            27
+    #define DIM_CURVE_MIN_VAL            35
     // Fixed poin bits, to increase precision
     #define DIM_CURVE_FP_BITS            (8 - FADE_SPEED)
 #endif

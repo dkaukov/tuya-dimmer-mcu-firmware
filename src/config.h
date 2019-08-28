@@ -72,15 +72,15 @@
 #define TRIAC_MIN_TURN_ON_TIME_US  600
 
 
-#define FADE_SPEED 2
+#define FADE_SPEED 4
 #define MIN_BRIGHNESS_VALUE 2  // 1%
 
 #define DIM_CURVE_TYPE_BICUBIC
 #ifdef DIM_CURVE_TYPE_BICUBIC
     // 1 - linear
-    #define DIM_CURVE_BICUBIC_EXP_FACTOR 0.25
+    #define DIM_CURVE_BICUBIC_EXP_FACTOR 0.025
     // minimum pwm value (0-255)
-    #define DIM_CURVE_MIN_VAL            35
+    #define DIM_CURVE_MIN_VAL            73
     // Fixed poin bits, to increase precision
     #define DIM_CURVE_FP_BITS            (8 - FADE_SPEED)
 #endif
